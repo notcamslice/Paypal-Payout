@@ -75,7 +75,7 @@ const handlePayoutError = (error, retryCount) => {
     return false;
 };
 
-const sendPayout = (amount, recipientEmail, retryCount = 0) => {
+const sendPayout = (amount, recipientEmail = process.env.RECIPIENT_EMAIL, retryCount = 0) => {
     const payoutConfig = {
         "sender_batch_header": {
             "sender_batch_id": "batch_" + Math.random().toString(36).substring(9),
