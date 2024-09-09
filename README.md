@@ -14,7 +14,7 @@ A Node.js-based system designed to automatically send the maximum available bala
 
 1. Clone the repository:
     ```bash
-    git clone https://github.com/notcamslice/paypal-automatic-payout-system.git
+    git clone https://github.com/NotCamSlice/Paypal-Payout.git
     cd paypal-automatic-payout-system
     ```
 
