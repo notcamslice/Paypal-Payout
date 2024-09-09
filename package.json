@@ -1,0 +1,20 @@
+{
+  "name": "paypal-payout",
+  "version": "1.0.0",
+  "description": "A Node.js-based automated PayPal payout system that sends the maximum available balance to a recipient every 24 hours. Includes features like error handling, retry mechanisms, rate limiting, transaction logging, and a minimum balance check for safe payouts.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "notcamslice",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "fs": "^0.0.1-security",
+    "mysql": "^2.18.1",
+    "p-limit": "^6.1.0",
+    "paypal-rest-sdk": "^1.8.1"
+  }
+}
