@@ -33,6 +33,7 @@ A Node.js-based system designed to automatically send the maximum available bala
     MYSQL_USER=mysql_user
     MYSQL_PASSWORD=mysql_password
     MYSQL_DATABASE=database_name
+    RECIPIENT_EMAIL=recipient@example.com
     ```
 
 4. (Optional) Set up your MySQL database for transaction logging:
