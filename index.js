@@ -3,6 +3,8 @@ const cron = require('node-cron');
 const fs = require('fs');
 const pLimit = require('p-limit');
 const mysql = require('mysql');
+const MAX_RETRIES = process.env.MAX_RETRIES || 3;
+const BACKOFF_MULTIPLIER = process.env.BACKOFF_MULTIPLIER || 2;
 require('dotenv').config();
 
 paypal.configure({
@@ -61,8 +63,8 @@ const logSuccess = (payout, amount, recipientEmail) => {
 
 const handlePayoutError = (error, retryCount) => {
     logError(error);
-    if (retryCount < 3) {
-        const delay = Math.pow(2, retryCount) * 1000;
+    if (retryCount < MAX_RETRIES) {
+        const delay = Math.pow(BACKOFF_MULTIPLIER, retryCount) * 1000;
         console.log(`Retrying payout in ${delay / 1000} seconds... Attempt ${retryCount + 1}`);
         
         setTimeout(() => {
@@ -71,7 +73,7 @@ const handlePayoutError = (error, retryCount) => {
         
         return true;
     }
-    console.log("Payout failed after 3 attempts.");
+    console.log("Payout failed after ${MAX_RETRIES} attempts.");
     return false;
 };
 
