@@ -77,37 +77,37 @@ const handlePayoutError = (error, retryCount) => {
     return false;
 };
 
-const sendPayout = (amount, recipientEmail = process.env.RECIPIENT_EMAIL, retryCount = 0) => {
-    const payoutConfig = {
-        "sender_batch_header": {
-            "sender_batch_id": "batch_" + Math.random().toString(36).substring(9),
-            "email_subject": "You have a payment",
-            "email_message": "You have received a payment from us!"
-        },
-        "items": [
-            {
-                "recipient_type": "EMAIL",
-                "amount": {
-                    "value": amount,
-                    "currency": "USD"
-                },
-                "receiver": recipientEmail,
-                "note": "Automatic payout every 24 hours",
-                "sender_item_id": "item_" + Math.random().toString(36).substring(9)
-            }
-        ]
-    };
+const sendPayout = async (amount, recipientEmail = process.env.RECIPIENT_EMAIL, retryCount = 0) => {
+    try {
+        const payoutConfig = {
+            "sender_batch_header": {
+                "sender_batch_id": "batch_" + Math.random().toString(36).substring(9),
+                "email_subject": "You have a payment",
+                "email_message": "You have received a payment from us!"
+            },
+            "items": [
+                {
+                    "recipient_type": "EMAIL",
+                    "amount": {
+                        "value": amount,
+                        "currency": "USD"
+                    },
+                    "receiver": recipientEmail,
+                    "note": "Automatic payout every 24 hours",
+                    "sender_item_id": "item_" + Math.random().toString(36).substring(9)
+                }
+            ]
+        };
 
-    paypal.payout.create(payoutConfig, function (error, payout) {
-        if (error) {
-            const shouldRetry = handlePayoutError(error, retryCount);
-            if (shouldRetry) {
-                sendPayout(amount, retryCount + 1);
-            }
+        const payout = await paypal.payout.create(payoutConfig);
+        logSuccess(payout, amount, recipientEmail);
+    } catch (error) {
+        if (retryCount < MAX_RETRIES) {
+            await handlePayoutError(error, retryCount);
         } else {
-            logSuccess(payout, amount, recipientEmail);
+            console.log("Payout failed after 3 attempts.");
         }
-    });
+    }
 };
 
 const limit = pLimit(1);
