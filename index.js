@@ -61,14 +61,14 @@ const logSuccess = (payout, amount, recipientEmail) => {
     }
 };
 
-const handlePayoutError = (error, retryCount) => {
+const handlePayoutError = (error, amount, recipientEmail, retryCount) => {
     logError(error);
     if (retryCount < MAX_RETRIES) {
         const delay = Math.pow(BACKOFF_MULTIPLIER, retryCount) * 1000;
         console.log(`Retrying payout in ${delay / 1000} seconds... Attempt ${retryCount + 1}`);
         
         setTimeout(() => {
-            sendPayout(amount, retryCount + 1);
+            sendPayout(amount, recipientEmail, retryCount + 1);
         }, delay);
         
         return true;
