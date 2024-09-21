@@ -140,3 +140,10 @@ cron.schedule('0 0 * * *', () => {
 }, {
     timezone: "America/New_York"
 });
+
+process.on('SIGTERM', async () => {
+    console.log('SIGTERM signal received. Closing gracefully...');
+    await pool.end();
+    await payoutQueue.close();
+    process.exit(0);
+});
