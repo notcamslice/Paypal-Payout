@@ -13,24 +13,17 @@ paypal.configure({
     'client_secret': process.env.PAYPAL_CLIENT_SECRET
 });
 
-let dbConnection = null;
+let pool = null;
 
 if (process.env.MYSQL_HOST && process.env.MYSQL_USER && process.env.MYSQL_PASSWORD && process.env.MYSQL_DATABASE) {
-    dbConnection = mysql.createConnection({
+    pool = mysql.createPool({
+        connectionLimit: 10,
         host: process.env.MYSQL_HOST,
         user: process.env.MYSQL_USER,
         password: process.env.MYSQL_PASSWORD,
         database: process.env.MYSQL_DATABASE
     });
-
-    dbConnection.connect((err) => {
-        if (err) {
-            console.error('Error connecting to MySQL:', err);
-            dbConnection = null;
-        } else {
-            console.log('Connected to MySQL database.');
-        }
-    });
+    console.log('Connected to MySQL database pool.');
 } else {
     console.log('MySQL credentials not found. Falling back to file logging.');
 }
@@ -40,7 +33,7 @@ const logError = (error) => {
     if (dbConnection) {
         const query = `INSERT INTO payout_history (recipient_email, amount, status, error_message, created_at)
                        VALUES (?, ?, ?, ?, ?)`;
-        dbConnection.query(query, ["unknown", 0, "failed", error.message, timestamp], (err) => {
+        pool.query(query, ["unknown", 0, "failed", error.message, timestamp], (err) => {
             if (err) console.error('Error logging to MySQL:', err);
         });
     } else {
@@ -53,7 +46,7 @@ const logSuccess = (payout, amount, recipientEmail) => {
     if (dbConnection) {
         const query = `INSERT INTO payout_history (recipient_email, amount, status, transaction_id, created_at)
                        VALUES (?, ?, ?, ?, ?)`;
-        dbConnection.query(query, [recipientEmail, amount, "success", payout.batch_header.payout_batch_id, timestamp], (err) => {
+        pool.query(query, [recipientEmail, amount, "success", payout.batch_header.payout_batch_id, timestamp], (err) => {
             if (err) console.error('Error logging to MySQL:', err);
         });
     } else {
@@ -143,7 +136,9 @@ cron.schedule('0 0 * * *', () => {
 
 process.on('SIGTERM', async () => {
     console.log('SIGTERM signal received. Closing gracefully...');
-    await pool.end();
-    await payoutQueue.close();
+    if (pool) {
+        await pool.end();
+    }
+    console.log('MySQL connection pool closed.');
     process.exit(0);
 });
