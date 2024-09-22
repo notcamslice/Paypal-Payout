@@ -30,7 +30,7 @@ if (process.env.MYSQL_HOST && process.env.MYSQL_USER && process.env.MYSQL_PASSWO
 
 const logError = (error) => {
     const timestamp = new Date().toISOString();
-    if (dbConnection) {
+    if (pool) {
         const query = `INSERT INTO payout_history (recipient_email, amount, status, error_message, created_at)
                        VALUES (?, ?, ?, ?, ?)`;
         pool.query(query, ["unknown", 0, "failed", error.message, timestamp], (err) => {
@@ -43,7 +43,7 @@ const logError = (error) => {
 
 const logSuccess = (payout, amount, recipientEmail) => {
     const timestamp = new Date().toISOString();
-    if (dbConnection) {
+    if (pool) {
         const query = `INSERT INTO payout_history (recipient_email, amount, status, transaction_id, created_at)
                        VALUES (?, ?, ?, ?, ?)`;
         pool.query(query, [recipientEmail, amount, "success", payout.batch_header.payout_batch_id, timestamp], (err) => {
