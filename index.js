@@ -28,27 +28,31 @@ if (process.env.MYSQL_HOST && process.env.MYSQL_USER && process.env.MYSQL_PASSWO
     console.log('MySQL credentials not found. Falling back to file logging.');
 }
 
-const logError = (error) => {
+const logError = async (error) => {
     const timestamp = new Date().toISOString();
     if (pool) {
         const query = `INSERT INTO payout_history (recipient_email, amount, status, error_message, created_at)
                        VALUES (?, ?, ?, ?, ?)`;
-        pool.query(query, ["unknown", 0, "failed", error.message, timestamp], (err) => {
-            if (err) console.error('Error logging to MySQL:', err);
-        });
+        try {
+            await pool.query(query, ["unknown", 0, "failed", error.message, timestamp]);
+        } catch (err) {
+            console.error('Error logging to MySQL:', err);
+        }
     } else {
         fs.appendFileSync('payout_errors.log', `${timestamp} - Error: ${error.message}\n`);
     }
 };
 
-const logSuccess = (payout, amount, recipientEmail) => {
+const logSuccess = async (payout, amount, recipientEmail) => {
     const timestamp = new Date().toISOString();
     if (pool) {
         const query = `INSERT INTO payout_history (recipient_email, amount, status, transaction_id, created_at)
                        VALUES (?, ?, ?, ?, ?)`;
-        pool.query(query, [recipientEmail, amount, "success", payout.batch_header.payout_batch_id, timestamp], (err) => {
-            if (err) console.error('Error logging to MySQL:', err);
-        });
+        try {
+            await pool.query(query, [recipientEmail, amount, "success", payout.batch_header.payout_batch_id, timestamp]);
+        } catch (err) {
+            console.error('Error logging to MySQL:', err);
+        }
     } else {
         fs.appendFileSync('payout_success.log', `${timestamp} - Success: ${JSON.stringify(payout)}\n`);
     }
