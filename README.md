@@ -90,4 +90,4 @@ If you'd like to contribute to this project, feel free to submit a pull request 
 For any questions or issues, feel free to reach out to:
 
 - **Author**: notcamslice
-- **Email**: [cam@jaracc.com](mailto:cam@jaracc.com)
+- **Email**: [cam@grandtheftsocial.com](mailto:cam@grandtheftsocial.com)
