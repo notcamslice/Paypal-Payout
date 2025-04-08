@@ -1,4 +1,4 @@
-const paypal = require('@paypal-rest-sdk');
+const paypalPayoutsSdk = require('@paypal/payouts-sdk');
 const cron = require('node-cron');
 const fs = require('fs').promises;
 const pLimit = require('p-limit');
@@ -10,13 +10,13 @@ require('dotenv').config();
 const MAX_RETRIES = process.env.MAX_RETRIES || 3;
 const BACKOFF_MULTIPLIER = process.env.BACKOFF_MULTIPLIER || 2;
 
-paypal.configure({
-    'mode': process.env.PAYPAL_MODE,
-    'client_id': process.env.PAYPAL_CLIENT_ID,
-    'client_secret': process.env.PAYPAL_CLIENT_SECRET
-});
+function PayPalClient() {
+    const env = process.env.PAYPAL_MODE === 'live'
+        ? new paypalPayoutsSdk.core.LiveEnvironment(process.env.PAYPAL_CLIENT_ID, process.env.PAYPAL_CLIENT_SECRET)
+        : new paypalPayoutsSdk.core.SandboxEnvironment(process.env.PAYPAL_CLIENT_ID, process.env.PAYPAL_CLIENT_SECRET);
 
-let pool = null;
+    return new paypalPayoutsSdk.core.PayPalHttpClient(env);
+}
 
 if (process.env.MYSQL_HOST && process.env.MYSQL_USER && process.env.MYSQL_PASSWORD && process.env.MYSQL_DATABASE) {
     pool = mysql.createPool({
@@ -61,30 +61,37 @@ const logToDatabase = async (recipientEmail, amount, status, transactionId = nul
 };
 
 const sendPayout = async (amount, recipientEmail = process.env.RECIPIENT_EMAIL) => {
-    const payoutConfig = {
-        "sender_batch_header": {
-            "sender_batch_id": "batch_" + uuidv4(),
-            "email_subject": "You have a payment",
-            "email_message": "You have received a payment from us!"
+    const client = PayPalClient();
+
+    const requestBody = {
+        sender_batch_header: {
+            sender_batch_id: `batch_${uuidv4()}`,
+            email_subject: "You have a payment",
+            email_message: "You have received a payment from us!"
         },
-        "items": [
+        items: [
             {
-                "recipient_type": "EMAIL",
-                "amount": {
-                    "value": amount,
-                    "currency": process.env.PAYOUT_CURRENCY || "USD"
+                recipient_type: "EMAIL",
+                amount: {
+                    value: amount.toFixed(2),
+                    currency: process.env.PAYOUT_CURRENCY || "USD"
                 },
-                "receiver": recipientEmail,
-                "note": "Automatic payout every 24 hours",
-                "sender_item_id": "item_" + uuidv4()
+                note: "Automatic payout every 24 hours",
+                sender_item_id: `item_${uuidv4()}`,
+                receiver: recipientEmail
             }
         ]
     };
 
+    const request = new paypalPayoutsSdk.payouts.PayoutsPostRequest();
+    request.requestBody(requestBody);
+
     try {
-        const payout = await paypal.payout.create(payoutConfig);
-        await logToDatabase(recipientEmail, amount, "success", payout.batch_header.payout_batch_id);
-        await log(`Payout successful: ${JSON.stringify(payout)}`);
+        const response = await client.execute(request);
+        const batchId = response.result.batch_header.payout_batch_id;
+
+        await logToDatabase(recipientEmail, amount, "success", batchId);
+        await log(`Payout successful: ${JSON.stringify(response.result)}`);
     } catch (error) {
         await logToDatabase(recipientEmail, amount, "failed", null, error.message);
         await log(`Payout failed: ${error.message}`, 'error');
@@ -129,17 +136,6 @@ const checkBalanceAndSendPayout = () => {
 };
 
 cron.schedule('0 0 * * *', () => {
-    console.log("Running payout job at midnight...");
+    console.log("Running scheduled payout check...");
     checkBalanceAndSendPayout();
-}, {
-    timezone: "America/New_York"
-});
-
-process.on('SIGTERM', async () => {
-    console.log('SIGTERM signal received. Closing gracefully...');
-    if (pool) {
-        await pool.end();
-    }
-    console.log('MySQL connection pool closed.');
-    process.exit(0);
 });
